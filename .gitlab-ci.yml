@@ -1,0 +1,66 @@
+image: adoptopenjdk:11-hotspot
+
+variables:
+  COURSIER_CACHE: .cache/coursier
+
+cache:
+  paths:
+    - .cache/
+    - node_modules/
+
+stages:
+  - test
+  - diff
+  - deploy
+
+test:
+  stage: test
+  script:
+    - ./sbt test
+
+scalafmt:
+  stage: test
+  script:
+    - ./sbt scalafmtCheckAll scalafmtSbtCheck
+
+build server dockerfile:
+  stage: test
+  script:
+    - ./sbt server/docker:stage
+  artifacts:
+    paths:
+      - server/target/docker/stage/
+
+build cdk image:
+  stage: test
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - cd docker
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE:cdk-$CI_COMMIT_REF_NAME -f DockerfileForBuildCDK .
+    - docker push $CI_REGISTRY_IMAGE:cdk-$CI_COMMIT_REF_NAME
+
+diff:
+  stage: diff
+  dependencies:
+    - "build server dockerfile"
+  image: $CI_REGISTRY_IMAGE:cdk-$CI_COMMIT_REF_NAME
+  script:
+    - npm install
+    - npx cdk diff WebServerStack || true
+
+deploy:
+  stage: deploy
+  when: manual
+  image: $CI_REGISTRY_IMAGE:cdk-$CI_COMMIT_REF_NAME
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+  dependencies:
+    - "build server dockerfile"
+  script:
+    - npm install
+    - npx cdk deploy --require-approval=never WebServerStack
