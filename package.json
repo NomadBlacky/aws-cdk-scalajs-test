@@ -17,6 +17,6 @@
   },
   "homepage": "https://github.com/NomadBlacky/aws-cdk-fargate.g8#readme",
   "devDependencies": {
-    "aws-cdk": "1.46.0"
+    "aws-cdk": "1.64.1"
   }
 }
