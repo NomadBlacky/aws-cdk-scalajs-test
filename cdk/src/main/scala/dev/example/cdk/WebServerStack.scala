@@ -1,52 +1,45 @@
 package dev.example.cdk
 
-import java.util
+import typings.awsCdkAwsEc2.mod.{SubnetType, Vpc}
+import typings.awsCdkAwsEc2.vpcMod.{SubnetConfiguration, VpcProps}
+import typings.awsCdkAwsEcs.clusterMod.ClusterProps
+import typings.awsCdkAwsEcs.mod.{Cluster, ContainerImage}
+import typings.awsCdkAwsEcsPatterns.applicationLoadBalancedFargateServiceMod.ApplicationLoadBalancedFargateServiceProps
+import typings.awsCdkAwsEcsPatterns.applicationLoadBalancedServiceBaseMod.ApplicationLoadBalancedTaskImageOptions
+import typings.awsCdkAwsEcsPatterns.mod.ApplicationLoadBalancedFargateService
+import typings.awsCdkCore.mod.{Construct, Stack}
 
-import software.amazon.awscdk.core.{Construct, Stack}
-import software.amazon.awscdk.services.ec2.{SubnetConfiguration, SubnetType, Vpc, VpcProps}
-import software.amazon.awscdk.services.ecs.patterns.{
-  ApplicationLoadBalancedFargateService,
-  ApplicationLoadBalancedFargateServiceProps,
-  ApplicationLoadBalancedTaskImageOptions
-}
-import software.amazon.awscdk.services.ecs.{Cluster, ClusterProps, ContainerImage}
+import scala.scalajs.js
 
 class WebServerStack(scope: Construct, id: String) extends Stack(scope, id) {
+  private val self = this.asInstanceOf[Construct]
 
   val vpc = new Vpc(
-    this,
+    self,
     "Vpc",
-    VpcProps
-      .builder()
-      .maxAzs(2)
-      .subnetConfiguration(
-        util.Arrays.asList(
-          SubnetConfiguration.builder().name("PublicSubnet").subnetType(SubnetType.PUBLIC).build()
-        )
+    VpcProps()
+      .setMaxAzs(2)
+      .setSubnetConfiguration(
+        js.Array(SubnetConfiguration("PublicSubnet", SubnetType.PUBLIC))
       )
-      .build()
   )
 
-  val cluster = new Cluster(this, "Cluster", ClusterProps.builder().vpc(vpc).build())
+  val cluster = new Cluster(self, "Cluster", ClusterProps().setVpc(vpc))
 
   val fargate: ApplicationLoadBalancedFargateService = {
-    val imageOpts = ApplicationLoadBalancedTaskImageOptions
-      .builder()
-      .image(ContainerImage.fromAsset("server/target/docker/stage/"))
-      .containerPort(8080)
-      .build()
+    val imageOpts = ApplicationLoadBalancedTaskImageOptions(
+      image = ContainerImage.fromAsset("server/target/docker/stage/").asInstanceOf[ContainerImage]
+    )
 
     new ApplicationLoadBalancedFargateService(
-      this,
+      self,
       "Fargate",
-      ApplicationLoadBalancedFargateServiceProps
-        .builder()
-        .cluster(cluster)
-        .assignPublicIp(true)
-        .cpu(256)
-        .memoryLimitMiB(512)
-        .taskImageOptions(imageOpts)
-        .build()
+      ApplicationLoadBalancedFargateServiceProps()
+        .setCluster(cluster)
+        .setAssignPublicIp(true)
+        .setCpu(256)
+        .setMemoryLimitMiB(512)
+        .setTaskImageOptions(imageOpts)
     )
   }
 

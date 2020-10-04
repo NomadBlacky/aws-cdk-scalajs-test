@@ -26,9 +26,11 @@ lazy val server = (project in file("server"))
   )
 
 lazy val cdk = (project in file("cdk"))
+  .enablePlugins(ScalaJSPlugin, ScalablyTypedConverterPlugin)
   .settings(commonSettings)
   .settings(
-    libraryDependencies ++= Seq(
-      "software.amazon.awscdk" % "ecs-patterns" % versions.awscdk
-    )
+    Compile / npmDependencies ++= Seq(
+      "@aws-cdk/aws-ecs-patterns" -> versions.awscdk
+    ),
+    scalaJSUseMainModuleInitializer := true
   )
